@@ -17,10 +17,10 @@ testingDataTemp = []
 # K Folds
 k_foldValue = 10
 
-# Network Configurations
+# Network Configurations, adjust the hidden nodes
 numOfEpochs = 1000
 numOfInputNodes = 64
-numOfHiddenNodes = 40
+numOfHiddenNodes = 25
 numOfOutputNodes = 10
 
 # Create the network
@@ -82,7 +82,12 @@ def loadData():
         if ((j + 1) % 400 == 0):
             x+=1
 
-def holdOut():
+'''
+    Choose trainType which can be 1 (backProp), 2 (delta bar delta), 
+    or 3 (rProp).
+    batchT is for batch training. 1 (enabled) and or 0 (disabled).
+'''
+def holdOut(trainType, batchT):
     # Keeps count of same accuracy occurring
     counter = 0
     # Get the training data
@@ -91,7 +96,7 @@ def holdOut():
     for i in range(numOfEpochs):
         np.random.shuffle(trainingData)
         # Train the network
-        training(trainingData, 1, 0)
+        training(trainingData, trainType, batchT)
         
         print("-------- Epoch --------:", i + 1)
         
@@ -132,7 +137,7 @@ def holdOut():
             counter = 0
 
 # Use the k-fold method for training
-def k_fold(fold):
+def k_fold(fold, trainType, batchT):
     # Get the data
     trainingData = np.array(trainingDataTemp)
     # Shuffle the whole data set before splitting
@@ -158,10 +163,10 @@ def k_fold(fold):
             np.random.shuffle(validationSet)
             
             # Perform training for 9/10 training set
-            training(trainingSet, 1, 0)
+            training(trainingSet, trainType, batchT)
             NN.clearAccuracyCount()
             
-            # Perform accuracy test for 1/10 validation set, no back prop needed
+            # Perform accuracy test for 1/10 validation set, no back prop needed or batch training
             training(validationSet, 0, 0)
             sumOfKRuns += NN.accuracyOfEpoch(validationSet.shape[0])
             
@@ -169,10 +174,10 @@ def k_fold(fold):
         avgOfKRuns = sumOfKRuns/fold
         
         print("-------- Epoch --------:", i + 1)
-        print("Average of accuracy for K runs: \n", avgOfKRuns)
+        print("Average accuracy for K runs: \n", avgOfKRuns)
         
         # Used for writing to a CSV file
-        writeString = "Average of accuracy for K runs for Epoch " + str(i + 1) + str(":")
+        writeString = "Average accuracy for K runs for Epoch " + str(i + 1) + str(":")
         printList[0] = writeString
         printList[1] = avgOfKRuns
         wr.writerow(printList)
@@ -224,9 +229,11 @@ def testing():
 
 def main():
     loadData()
-    # Perform training technique, uncomment one at a time
-    #k_fold(k_foldValue)
-    holdOut()
+    # Perform either training technique by commenting one of them out.
+    #k_fold(k_foldValue, 1, 0)
+    # Normal hold out 
+    holdOut(3, 1)
+
     
         
 if __name__ == '__main__':
