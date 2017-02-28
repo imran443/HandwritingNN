@@ -122,7 +122,7 @@ def holdOut():
                 file.write("---------Training Complete--------- \n")
                 #Run the testing data before finishing
                 testing()
-                file.write("------------ Learning Parameter ----------- \n")
+                file.write("------------ Learning Parameters ----------- \n")
                 wr.writerow(["Number of Epochs: ", i + 1])
                 wr.writerow(["Number of hidden nodes: ", numOfHiddenNodes])
                 wr.writerow(["Learning rate: ", NN.learningRate])
@@ -182,6 +182,7 @@ def k_fold(fold):
             print("Training Complete: \n", avgOfKRuns)
             file.write("Training Complete: " + str(avgOfKRuns) + str("\n"))
             testing()
+            file.write("------------ Learning Parameters ----------- \n")
             wr.writerow(["Number of Epochs: ", i + 1])
             wr.writerow(["Number of hidden nodes: ", numOfHiddenNodes])
             wr.writerow(["Learning rate: ", NN.learningRate])
@@ -223,7 +224,7 @@ def testing():
 
 def main():
     loadData()
-    # Perform training technique
+    # Perform training technique, uncomment one at a time
     #k_fold(k_foldValue)
     holdOut()
     
