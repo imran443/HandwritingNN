@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class NeuralNet:
     inputLayer = None
     hiddenLayer = None
@@ -45,8 +44,8 @@ class NeuralNet:
     errContributionsHidden = None
     
     # Used for back prop
-    learningRate = 0.04
-    momentum = 0.06
+    learningRate = None
+    momentum = None
     
     # Used for rProp
     rPropDeltaIToH = None
@@ -59,10 +58,12 @@ class NeuralNet:
     # Counts how many samples the NN gets right on each epoch
     accuracyCount = 0
     
-    def __init__(self, numOfInputNodes, numOfHiddenNodes, numOfOutputNodes):
+    def __init__(self, numOfInputNodes, numOfHiddenNodes, numOfOutputNodes, learningRate, momentum):
         self.numOfHiddenNodes = numOfHiddenNodes
         self.numOfInputNodes = numOfInputNodes
         self.numOfOutputNodes = numOfOutputNodes
+        self.learningRate = learningRate
+        self.momentum = momentum
         
         # Create the weight matrices for the connections in each layer
         self.initializeNetwork()
@@ -106,24 +107,13 @@ class NeuralNet:
         # Resize to give 2d dimensions
         self.inputLayer = np.resize(self.inputLayer, (1, self.numOfInputNodes))
         
-        
-    
     # Feed forward pass  
     def feedForward(self):
         self.hiddenLayer = np.dot(self.inputLayer, self.weightValsItoH) 
-        #print("Input Layer: \n", self.inputLayer)
-        #print("Bias for Hidden Layer: \n", self.biasValuesHiddenL)
-        #print("Input Layer to Hidden Layer weights: \n", self.weightValsItoH)
-        #print("Hidden Layer: \n", self.hiddenLayer)
         self.hiddenLayer = self.activationFunction(self.hiddenLayer + self.biasValuesHiddenL, 0)
-        #print("Hidden Layer after Sigmoid: \n", self.hiddenLayer)
-        #print("Hidden Layer to Output Layer Weights: \n", self.weightValsHToO)
         self.outputLayer = np.dot(self.hiddenLayer, self.weightValsHToO)
-        #print("Bias for Output Layer: \n", self.biasValuesOutputL)
-        #print("Output before sigmoid and bias: \n", self.outputLayer)
         self.outputLayer = self.activationFunction(self.outputLayer + self.biasValuesOutputL, 0)
-        #print("Output: \n", self.outputLayer)
-        # Check the accuracy after every feed forward
+        # Increase the accuracy counter after every feed forward that is correct.
         self.accuracyOfNN()
        
     # Calculates the error in system for each output node for a specific sample    
@@ -139,8 +129,8 @@ class NeuralNet:
                 target = 1
             else:
                 target = 0
+            # Calculate the current error for each output node
             curErrorVal = (target - self.outputLayer[0,j])**(2)
-            #print("Error for digit: " + str(j) + str("\n"), curErrorVal )
             errValue = errValue + curErrorVal
         errValue = ((1/2)*errValue)
         print("Error in system for " + str(self.classifyDigit) +str(":"), errValue)
@@ -164,8 +154,6 @@ class NeuralNet:
                 target = 0
             # Loads errors in to an array
             self.errContributionsOutput[0,i] = output - target
-        
-        #print("Error per output node: \n", self.errContributionsOutput)
              
     # Back propagation algorithm
     def backProp(self):
@@ -197,12 +185,12 @@ class NeuralNet:
         self.deltaWeightsItoH = np.matrix.transpose(self.deltaWeightsItoH)
         # Add the momentum if they have value. i.e don't add it in the first pass
         if(self.prevDeltaWeightsHtoO is None):
-            self.weightValsItoH = self.weightValsItoH - self.deltaWeightsItoH
-            self.weightValsHToO = self.weightValsHToO - self.deltaWeightsHtoO
+            self.weightValsItoH = self.weightValsItoH - self.learningRate * self.deltaWeightsItoH
+            self.weightValsHToO = self.weightValsHToO - self.learningRate * self.deltaWeightsHtoO
         else:
             # Update the weights with momentum
-            self.weightValsItoH = self.weightValsItoH - (self.deltaWeightsItoH + self.momentum * self.prevDeltaWeightsItoH)
-            self.weightValsHToO = self.weightValsHToO - (self.deltaWeightsHtoO + self.momentum * self.prevDeltaWeightsHtoO)
+            self.weightValsItoH = self.weightValsItoH - (self.learningRate * self.deltaWeightsItoH + self.momentum * self.prevDeltaWeightsItoH)
+            self.weightValsHToO = self.weightValsHToO - (self.learningRate * self.deltaWeightsHtoO + self.momentum * self.prevDeltaWeightsHtoO)
         # Set the momentum matrices for the next pass
         self.prevDeltaWeightsItoH = self.deltaWeightsItoH
         self.prevDeltaWeightsHtoO = self.deltaWeightsHtoO
@@ -216,55 +204,41 @@ class NeuralNet:
         
         # Send output values into derivative of activation function
         deriveOutput = self.activationFunction(self.outputLayer, 0, True)
-        #print("Derived Output: \n", deriveOutput)
         
         # Multiply the derived values with the error
         derivAndErr = deriveOutput * self.errContributionsOutput
-        #print("Error and Derivative Output: \n", derivAndErr)
         
         # Transpose the derivate*Err array for easy dot product
         transDerivAndErr = np.matrix.transpose(derivAndErr)
-        #print("Error and Derivative Output Transposed: \n", transDerivAndErr)
         
         self.deltaWeightsHtoO = np.dot(transDerivAndErr, self.hiddenLayer)
-        #print("deltaWeightsHtoO: \n", self.deltaWeightsHtoO)
         
         # Transpose the final result to align the proper delta weights in each cell 
         self.deltaWeightsHtoO = np.matrix.transpose(self.deltaWeightsHtoO)
-        #print("deltaWeightsHtoO Transposed: \n", self.deltaWeightsHtoO)
         
         # Sum up the delta's for the whole batch
         self.sumDeltaGradientsHToO += self.deltaWeightsHtoO
-        #print("sumDeltaGradientsHToO: \n", self.sumDeltaGradientsHToO)
         
         # Transpose HToO weights matrix, so we can calculate errors using dot product
         hiddenToOutputTrans = np.matrix.transpose(self.weightValsHToO)
-        #print("Hidden to Output Transposed:\n", hiddenToOutputTrans)
         
         # Calculates the error at the hidden layer
         self.errContributionsHidden = np.dot(self.errContributionsOutput, hiddenToOutputTrans)
-        #print("Error Hidden Contribution: \n", self.errContributionsHidden)
         
         # Send the hidden layer output values through the derivative of the activation function
         derivHidden = self.activationFunction(self.hiddenLayer, 0, True)
-        #print("Derived Hidden: \n", derivHidden)
         
         # multiply the hidden error for each node and derived output values of hidden layer. 
         deltaHiddenAndErr = derivHidden * self.errContributionsHidden
-        #print("Multiplied hidden derived outputs and error: \n", deltaHiddenAndErr)
         
         transDeltaHiddenAndErr = np.matrix.transpose(deltaHiddenAndErr)
-        #print("deltaHiddenAndErr Transposed: \n", transDeltaHiddenAndErr)
         
         self.deltaWeightsItoH = np.dot(transDeltaHiddenAndErr, self.inputLayer)
-        #print("Weight change matrix for Input to Hidden: \n", self.deltaWeightsItoH)
         
         self.deltaWeightsItoH = np.matrix.transpose(self.deltaWeightsItoH)
-        #print("deltaWeightsItoH Transposed: \n", self.deltaWeightsItoH)
         
         # Sum up the delta's for weights for ItoH
         self.sumDeltaGradientsItoH += self.deltaWeightsItoH
-        #print("sumDeltaGradientsItoH: \n", self.sumDeltaGradientsItoH)
     
     def deltaBarDelta(self):
         # The decay factor and growth amount k
@@ -424,6 +398,7 @@ class NeuralNet:
     
     # Used to remember the previous batch gradients
     def setSumOfPrevGradients(self):
+        # Copy the current gradients over
         self.prevSumDeltaGradientsItoH = np.copy(self.sumDeltaGradientsItoH)
         self.prevSumDeltaGradientsHtoO = np.copy(self.sumDeltaGradientsHToO)
         

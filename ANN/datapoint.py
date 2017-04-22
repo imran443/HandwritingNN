@@ -1,3 +1,4 @@
+# Used to store each data point.
 class dataPoints:
     dataList = None
     dataId = None

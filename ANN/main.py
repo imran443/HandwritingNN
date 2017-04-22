@@ -1,3 +1,4 @@
+# Imran Qureshi, 5510631, 
 import numpy as np
 import os as os
 import csv
@@ -17,14 +18,16 @@ testingDataTemp = []
 # K Folds
 k_foldValue = 10
 
-# Network Configurations, adjust the hidden nodes
-numOfEpochs = 1000
+# Network Configurations
+numOfEpochs = 300
 numOfInputNodes = 64
 numOfHiddenNodes = 25
 numOfOutputNodes = 10
+learningRate = 0.3
+momentum = 0.2
 
 # Create the network
-NN = NeuralNet(numOfInputNodes, numOfHiddenNodes, numOfOutputNodes)
+NN = None
 
 # Used to help check error in the system
 digits = np.arange(10)
@@ -36,6 +39,10 @@ accuracyPerEpoch = None
 # The .CSV file to write to for each run
 file = open("results.csv", 'w', newline='')
 wr = csv.writer(file, quoting=csv.QUOTE_ALL)
+
+file2 = open("epochs.csv", 'w', newline='')
+wr2 = csv.writer(file2, quoting=csv.QUOTE_ALL)
+
 printList = [[] for i in range(2)]
     
 
@@ -90,9 +97,21 @@ def loadData():
 def holdOut(trainType, batchT):
     # Keeps count of same accuracy occurring
     counter = 0
+    
     # Get the training data
     trainingData = np.array(trainingDataTemp)
-
+    
+    print("-------- Epoch --------:", 0)
+    # Send data for initial run
+    training(trainingData, 0, 0)
+    # After each epoch calculate the error in the system for each digit
+    NN.calcErrorInSystem()
+    
+    # Get the accuracy of this run
+    accuracyPerEpoch = NN.accuracyOfEpoch(trainingData.shape[0])  
+    
+    print("Accuracy of Epoch 0: " , accuracyPerEpoch)
+    
     for i in range(numOfEpochs):
         np.random.shuffle(trainingData)
         # Train the network
@@ -101,17 +120,12 @@ def holdOut(trainType, batchT):
         print("-------- Epoch --------:", i + 1)
         
         # After each epoch calculate the error in the system for each digit
-        errArray = NN.calcErrorInSystem()
+        NN.calcErrorInSystem()
         
         # Get the accuracy of this run
         accuracyPerEpoch = NN.accuracyOfEpoch(trainingData.shape[0])
         
         print("Accuracy of Epoch " + str(i + 1) + str(": "), accuracyPerEpoch)
-        # Used to build the list which will write to a .CSV file.
-        writeString = "Accuracy of Epoch " + str(i + 1) + str(": ")
-        printList[0] = writeString
-        printList[1] = accuracyPerEpoch
-        wr.writerow(printList)
         
         '''
             If the accuracy is 95% or higher for more than 3 
@@ -119,19 +133,14 @@ def holdOut(trainType, batchT):
             counter.
         '''
         # Stops the run if we reach the required accuracy.
-        if(accuracyPerEpoch > 0.98):
+        if(accuracyPerEpoch > 0.95 or (i+1) == numOfEpochs):
             counter +=1
             # Counter is used as indicator that there is no change for 10 epochs.
-            if(counter == 10):
+            if(counter == 3 or (i+1) == numOfEpochs):
                 print("---------Training Complete--------")
-                file.write("---------Training Complete--------- \n")
-                #Run the testing data before finishing
+                # Run the testing data before finishing
                 testing()
-                file.write("------------ Learning Parameters ----------- \n")
-                wr.writerow(["Number of Epochs: ", i + 1])
-                wr.writerow(["Number of hidden nodes: ", numOfHiddenNodes])
-                wr.writerow(["Learning rate: ", NN.learningRate])
-                wr.writerow(["Momentum: ", NN.momentum])
+                wr2.writerow([i + 1])
                 return
         else:
             counter = 0
@@ -176,23 +185,14 @@ def k_fold(fold, trainType, batchT):
         print("-------- Epoch --------:", i + 1)
         print("Average accuracy for K runs: \n", avgOfKRuns)
         
-        # Used for writing to a CSV file
-        writeString = "Average accuracy for K runs for Epoch " + str(i + 1) + str(":")
-        printList[0] = writeString
-        printList[1] = avgOfKRuns
-        wr.writerow(printList)
-        
         # If the average percentage is >= 98 % then stop training and validation
-        if(avgOfKRuns >= 0.98):
+        if(avgOfKRuns >= 0.95):
             print("Training Complete: \n", avgOfKRuns)
-            file.write("Training Complete: " + str(avgOfKRuns) + str("\n"))
+            # avgOfKRuns printed to .csv
+            #wr.writerow([avgOfKRuns])
             testing()
-            file.write("------------ Learning Parameters ----------- \n")
-            wr.writerow(["Number of Epochs: ", i + 1])
-            wr.writerow(["Number of hidden nodes: ", numOfHiddenNodes])
-            wr.writerow(["Learning rate: ", NN.learningRate])
-            wr.writerow(["Momentum: ", NN.momentum])
-            wr.writerow(["K Fold Value: ", k_foldValue])
+            # Number of epochs
+            wr2.writerow([(i + 1) * 10])
             return
  
 # Used to train the network, can choose to enable backProp, quickProp, or rProp        
@@ -225,14 +225,25 @@ def testing():
     accuracy = NN.accuracyOfEpoch(testingData.shape[0])
     print("Accuracy of Epoch Of Test Set: ", accuracy)
     # Write to the .CSV file
-    file.write("Accuracy of Epoch Of Test Set: " + str(accuracy) + str("\n"))
+    wr.writerow([accuracy])
 
 def main():
+    global NN
     loadData()
-    # Perform either training technique by commenting one of them out.
-    #k_fold(k_foldValue, 1, 0)
+    
     # Normal hold out 
-    holdOut(3, 1)
+    for i in range(15):
+        
+        # Create the network
+        NN = NeuralNet(numOfInputNodes, numOfHiddenNodes, numOfOutputNodes, learningRate, momentum)
+        # Perform either training technique by commenting one of them out.
+        #k_fold(k_foldValue, 1, 0)
+        holdOut(1, 0)
+    # Prints results to .CSV file   
+    wr.writerow([ ])
+    wr.writerow(["Number of hidden nodes: ", numOfHiddenNodes])
+    wr.writerow(["Learning rate: ", NN.learningRate])
+    wr.writerow(["Momentum: ", NN.momentum])
 
     
         
